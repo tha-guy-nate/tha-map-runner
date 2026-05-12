@@ -6,37 +6,40 @@ from .paths import resolve_path
 _ON_NO_MATCH = {"skip", "error", "blank"}
 
 
-def map_json_to_rows(
+def enrich_rows(
     rows: list[dict],
-    json_items: list[dict],
+    source: list[dict],
     mapping: dict[str, str],
     row_key: str,
-    json_key: str,
+    source_key: str,
     *,
     on_no_match: str = "skip",
-    allow_empty_json: bool = False,
+    allow_empty_source: bool = False,
+    skip_statuses: list[str] | None = None,
 ) -> list[dict]:
     if on_no_match not in _ON_NO_MATCH:
         raise MapperError(f"on_no_match must be one of {sorted(_ON_NO_MATCH)}, got {on_no_match!r}")
 
-    if not json_items:
-        if allow_empty_json:
+    statuses_to_skip = set(skip_statuses if skip_statuses is not None else ["error", "warning"])
+
+    if not source:
+        if allow_empty_source:
             return [row.copy() for row in rows]
-        raise MapperError("json_items is empty — pass allow_empty_json=True to allow this")
+        raise MapperError("source is empty — pass allow_empty_source=True to allow this")
 
     index: dict[object, dict] = {}
-    for item in json_items:
-        key = item.get(json_key)
+    for item in source:
+        key = item.get(source_key)
         if key in index:
             warnings.warn(
-                f"Duplicate {json_key!r} value {key!r} in json_items; using last occurrence",
+                f"Duplicate {source_key!r} value {key!r} in source; using last occurrence",
                 stacklevel=2,
             )
         index[key] = item
 
     output: list[dict] = []
     for row in rows:
-        if row.get("row status") == "error":
+        if row.get("row status") in statuses_to_skip:
             output.append(row.copy())
             continue
 
@@ -47,7 +50,7 @@ def map_json_to_rows(
             new_row = row.copy()
             if on_no_match == "error":
                 new_row["row status"] = "error"
-                new_row["message"] = f"No JSON match for {row_key}={key_val!r}"
+                new_row["message"] = f"No match for {row_key}={key_val!r}"
                 for field in mapping:
                     new_row[field] = ""
             elif on_no_match == "blank":
