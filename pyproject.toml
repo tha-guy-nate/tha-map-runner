@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tha-map-runner"
-version = "0.1.0"
+version = "0.1.1"
 description = "Join JSON responses into CSV-style rows with dotted-path projection — a Tabular Helper API."
 readme = "README.md"
 license = { text = "MIT" }

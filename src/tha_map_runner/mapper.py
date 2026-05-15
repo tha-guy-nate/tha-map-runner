@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 
 from .errors import MapperError
@@ -6,64 +8,75 @@ from .paths import resolve_path
 _ON_NO_MATCH = {"skip", "error", "blank"}
 
 
-def enrich_rows(
-    rows: list[dict],
-    source: list[dict],
-    mapping: dict[str, str],
-    row_key: str,
-    source_key: str,
-    *,
-    on_no_match: str = "skip",
-    allow_empty_source: bool = False,
-    skip_statuses: list[str] | None = None,
-) -> list[dict]:
-    if on_no_match not in _ON_NO_MATCH:
-        raise MapperError(f"on_no_match must be one of {sorted(_ON_NO_MATCH)}, got {on_no_match!r}")
+class ThaMap:
+    def __init__(self) -> None:
+        self.rows: list[dict] = []
 
-    statuses_to_skip = set(skip_statuses if skip_statuses is not None else ["error", "warning"])
-
-    if not source:
-        if allow_empty_source:
-            return [row.copy() for row in rows]
-        raise MapperError("source is empty — pass allow_empty_source=True to allow this")
-
-    index: dict[object, dict] = {}
-    for item in source:
-        key = item.get(source_key)
-        if key in index:
-            warnings.warn(
-                f"Duplicate {source_key!r} value {key!r} in source; using last occurrence",
-                stacklevel=2,
+    def enrich_rows(
+        self,
+        rows: list[dict],
+        source: list[dict],
+        mapping: dict[str, str],
+        row_key: str,
+        source_key: str,
+        *,
+        on_no_match: str = "skip",
+        allow_empty_source: bool = False,
+        skip_statuses: list[str] | None = None,
+    ) -> list[dict]:
+        if on_no_match not in _ON_NO_MATCH:
+            raise MapperError(
+                f"on_no_match must be one of {sorted(_ON_NO_MATCH)}, got {on_no_match!r}"
             )
-        index[key] = item
 
-    output: list[dict] = []
-    for row in rows:
-        if row.get("row status") in statuses_to_skip:
-            output.append(row.copy())
-            continue
+        statuses_to_skip = set(
+            skip_statuses if skip_statuses is not None else ["error", "warning"]
+        )
 
-        key_val = row.get(row_key)
-        match = index.get(key_val)
+        if not source:
+            if not allow_empty_source:
+                raise MapperError("source is empty — pass allow_empty_source=True to allow this")
+            result = [row.copy() for row in rows]
+            self.rows = result
+            return result
 
-        if match is None:
+        index: dict[object, dict] = {}
+        for item in source:
+            key = item.get(source_key)
+            if key in index:
+                warnings.warn(
+                    f"Duplicate {source_key!r} value {key!r} in source; using last occurrence",
+                    stacklevel=2,
+                )
+            index[key] = item
+
+        output: list[dict] = []
+        for row in rows:
+            if row.get("row status") in statuses_to_skip:
+                output.append(row.copy())
+                continue
+
+            key_val = row.get(row_key)
+            match = index.get(key_val)
+
+            if match is None:
+                new_row = row.copy()
+                if on_no_match == "error":
+                    new_row["row status"] = "error"
+                    new_row["message"] = f"No match for {row_key}={key_val!r}"
+                    for field in mapping:
+                        new_row[field] = ""
+                elif on_no_match == "blank":
+                    for field in mapping:
+                        new_row[field] = ""
+                output.append(new_row)
+                continue
+
             new_row = row.copy()
-            if on_no_match == "error":
-                new_row["row status"] = "error"
-                new_row["message"] = f"No match for {row_key}={key_val!r}"
-                for field in mapping:
-                    new_row[field] = ""
-            elif on_no_match == "blank":
-                for field in mapping:
-                    new_row[field] = ""
+            for field, path in mapping.items():
+                value = resolve_path(match, path)
+                new_row[field] = "" if value is None else value
             output.append(new_row)
-            continue
 
-        new_row = row.copy()
-        for field, path in mapping.items():
-            value = resolve_path(match, path)
-            new_row[field] = "" if value is None else value
-
-        output.append(new_row)
-
-    return output
+        self.rows = output
+        return output

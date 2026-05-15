@@ -15,7 +15,7 @@ pip install tha-map-runner
 ## Quick start
 
 ```python
-from tha_map_runner import enrich_rows
+from tha_map_runner import ThaMap
 
 rows = [
     {"Org BK": "school-001", "Start Date": "08/15"},
@@ -27,7 +27,8 @@ api_response = [
     {"sourcedId": "school-002", "name": "Roosevelt Middle",   "parent": {"sourcedId": "dist-A"}},
 ]
 
-enriched = enrich_rows(
+mapper = ThaMap()
+enriched = mapper.enrich_rows(
     rows=rows,
     source=api_response,
     mapping={
@@ -51,11 +52,19 @@ Rows whose `row status` is in `skip_statuses` are passed through unchanged.
 
 ## API
 
+### `ThaMap`
+
 ```python
-enrich_rows(
+ThaMap()
+```
+
+### `mapper.enrich_rows()`
+
+```python
+mapper.enrich_rows(
     rows,                              # list of row dicts
     source,                            # list of dicts to join against
-    mapping,                           # {"output_column": "dotted.path"} — callable values planned
+    mapping,                           # {"output_column": "dotted.path"}
     row_key,                           # column name in rows to match on
     source_key,                        # field in source to match on
     *,
@@ -64,6 +73,8 @@ enrich_rows(
     skip_statuses=["error", "warning"],# rows with these statuses are passed through
 ) -> list[dict]
 ```
+
+Results are also stored in `mapper.rows`.
 
 ### `on_no_match`
 
@@ -78,16 +89,16 @@ enrich_rows(
 By default, rows already marked `row status="error"` or `row status="warning"` are passed through without processing. Override with any list:
 
 ```python
-enrich_rows(..., skip_statuses=["error"])        # only skip errors
-enrich_rows(..., skip_statuses=["error", "pending"])  # custom statuses
-enrich_rows(..., skip_statuses=[])               # process every row regardless
+mapper.enrich_rows(..., skip_statuses=["error"])               # only skip errors
+mapper.enrich_rows(..., skip_statuses=["error", "pending"])    # custom statuses
+mapper.enrich_rows(..., skip_statuses=[])                      # process every row regardless
 ```
 
 ### Composing with `tha-csv-runner`
 
 ```python
 from tha_csv_runner import ThaCSV
-from tha_map_runner import enrich_rows
+from tha_map_runner import ThaMap
 import requests
 
 runner = ThaCSV()
@@ -95,7 +106,8 @@ runner.read("Step 1 of 2", "input.csv", ["Org BK"])
 
 api_response = requests.get(api_url).json()
 
-runner.rows = enrich_rows(
+mapper = ThaMap()
+runner.rows = mapper.enrich_rows(
     rows=runner.rows,
     source=api_response,
     mapping={"Org Name": "name", "District": "parent.sourcedId"},
