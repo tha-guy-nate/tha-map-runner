@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "tha-map-runner"
 version = "0.1.2"
-description = "A Tabular Helper API library that joins JSON responses into CSV-style row dicts using dotted-path projection."
+description = "A Tabular Helper API library that maps and joins dict-like data into row dicts using dotted-path projection."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Nate Wright" }]
