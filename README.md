@@ -107,7 +107,7 @@ runner.read("Step 1 of 2", "input.csv", ["Org BK"])
 api_response = requests.get(api_url).json()
 
 mapper = ThaMap()
-runner.rows = mapper.enrich_rows(
+enriched = mapper.enrich_rows(
     rows=runner.rows,
     source=api_response,
     mapping={"Org Name": "name", "District": "parent.sourcedId"},
@@ -115,7 +115,7 @@ runner.rows = mapper.enrich_rows(
     source_key="sourcedId",
 )
 
-runner.write("Step 2 of 2", "output.csv")
+runner.write("Step 2 of 2", "output.csv", rows=enriched)
 ```
 
 ## License
