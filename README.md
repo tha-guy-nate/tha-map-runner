@@ -126,6 +126,8 @@ This library is intentionally limited in scope — it handles one specific patte
 - [**glom**](https://glom.readthedocs.io) — powerful dotted-path access and transformation for arbitrarily nested Python data structures
 - [**jmespath**](https://jmespath.org) — JSON path-style queries for extracting values from nested dicts
 
+Choose this library when you're already working with `tha-*` row dicts and want to enrich them from a lookup list in one call — no DataFrame conversion, join and projection in a single step.
+
 ## License
 
 MIT
