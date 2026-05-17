@@ -118,6 +118,14 @@ enriched = mapper.enrich_rows(
 runner.write("Step 2 of 2", "output.csv", rows=enriched)
 ```
 
+## Alternatives
+
+This library is intentionally limited in scope — it handles one specific pattern: left-joining row dicts against a lookup list and projecting values via dotted paths. For more general needs:
+
+- [**pandas**](https://pandas.pydata.org) — `DataFrame.merge()` covers join operations with far more flexibility (inner, outer, multi-key, aggregations)
+- [**glom**](https://glom.readthedocs.io) — powerful dotted-path access and transformation for arbitrarily nested Python data structures
+- [**jmespath**](https://jmespath.org) — JSON path-style queries for extracting values from nested dicts
+
 ## License
 
 MIT
