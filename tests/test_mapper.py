@@ -119,6 +119,117 @@ def test_invalid_on_no_match_raises(
         mapper.enrich_rows([], json_items, mapping, "Org BK", "sourcedId", on_no_match="bad")
 
 
+# --- how="inner" ---
+
+def test_inner_keeps_only_matched_rows(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
+) -> None:
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId", how="inner")
+    assert len(result) == 2
+    assert all(r["Org BK"] in ("school-001", "school-002") for r in result)
+
+
+def test_inner_applies_mapping(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
+) -> None:
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId", how="inner")
+    assert result[0]["Org Name"] == "Lincoln Elementary"
+    assert result[1]["Org Name"] == "Roosevelt Middle"
+
+
+def test_inner_drops_unmatched(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
+) -> None:
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId", how="inner")
+    assert not any(r["Org BK"] == "school-003" for r in result)
+
+
+def test_inner_empty_source_allowed_returns_empty(
+    rows: list[dict], mapper: ThaMap, mapping: dict[str, str]
+) -> None:
+    result = mapper.enrich_rows(
+        rows, [], mapping, "Org BK", "sourcedId", how="inner", allow_empty_source=True
+    )
+    assert result == []
+
+
+def test_inner_passes_through_skip_status_rows(
+    mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
+) -> None:
+    rows = [
+        {"Org BK": "school-001", "row status": "error", "message": "bad"},
+        {"Org BK": "school-002"},
+    ]
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId", how="inner")
+    assert any(r.get("row status") == "error" for r in result)
+
+
+def test_inner_stores_rows(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
+) -> None:
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId", how="inner")
+    assert mapper.rows is result
+
+
+# --- how="anti" ---
+
+def test_anti_keeps_only_unmatched_rows(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
+) -> None:
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId", how="anti")
+    assert len(result) == 1
+    assert result[0]["Org BK"] == "school-003"
+
+
+def test_anti_does_not_apply_mapping(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
+) -> None:
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId", how="anti")
+    assert "Org Name" not in result[0]
+
+
+def test_anti_row_unchanged(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
+) -> None:
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId", how="anti")
+    assert result[0]["Start Date"] == "08/17"
+
+
+def test_anti_empty_source_allowed_returns_all(
+    rows: list[dict], mapper: ThaMap, mapping: dict[str, str]
+) -> None:
+    result = mapper.enrich_rows(
+        rows, [], mapping, "Org BK", "sourcedId", how="anti", allow_empty_source=True
+    )
+    assert len(result) == len(rows)
+
+
+def test_anti_passes_through_skip_status_rows(
+    mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
+) -> None:
+    rows = [
+        {"Org BK": "school-001", "row status": "error", "message": "bad"},
+        {"Org BK": "school-003"},
+    ]
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId", how="anti")
+    assert any(r.get("row status") == "error" for r in result)
+    assert any(r["Org BK"] == "school-003" for r in result)
+
+
+def test_anti_stores_rows(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
+) -> None:
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId", how="anti")
+    assert mapper.rows is result
+
+
+def test_invalid_how_raises(
+    mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
+) -> None:
+    with pytest.raises(MapperError, match="how"):
+        mapper.enrich_rows([], json_items, mapping, "Org BK", "sourcedId", how="outer")
+
+
 # --- allow_empty_source ---
 
 def test_empty_source_raises_by_default(

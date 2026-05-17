@@ -5,6 +5,7 @@ import warnings
 from .errors import MapperError
 from .paths import resolve_path
 
+_HOW = {"left", "inner", "anti"}
 _ON_NO_MATCH = {"skip", "error", "blank"}
 
 
@@ -20,10 +21,13 @@ class ThaMap:
         row_key: str,
         source_key: str,
         *,
+        how: str = "left",
         on_no_match: str = "skip",
         allow_empty_source: bool = False,
         skip_statuses: list[str] | None = None,
     ) -> list[dict]:
+        if how not in _HOW:
+            raise MapperError(f"how must be one of {sorted(_HOW)}, got {how!r}")
         if on_no_match not in _ON_NO_MATCH:
             raise MapperError(
                 f"on_no_match must be one of {sorted(_ON_NO_MATCH)}, got {on_no_match!r}"
@@ -36,6 +40,9 @@ class ThaMap:
         if not source:
             if not allow_empty_source:
                 raise MapperError("source is empty — pass allow_empty_source=True to allow this")
+            if how == "inner":
+                self.rows = []
+                return []
             result = [row.copy() for row in rows]
             self.rows = result
             return result
@@ -59,7 +66,15 @@ class ThaMap:
             key_val = row.get(row_key)
             match = index.get(key_val)
 
+            if how == "anti":
+                if match is None:
+                    output.append(row.copy())
+                continue
+
             if match is None:
+                if how == "inner":
+                    continue
+                # how == "left"
                 new_row = row.copy()
                 if on_no_match == "error":
                     new_row["row status"] = "error"

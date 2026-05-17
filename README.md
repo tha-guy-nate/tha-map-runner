@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/tha-guy-nate/tha-map-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/tha-guy-nate/tha-map-runner/actions/workflows/ci.yml)
 
-A small Python library that joins a list of row dicts with a lookup source on a key, projecting values into flat row columns via a mapping config.
+A small Python library that joins a list of row dicts with a lookup source on a single key, projecting values into flat row columns via a mapping config.
 
-Think "left join between rows and a lookup source, with dotted-path projection on the source side."
+Supports left, inner, and anti joins — all with dotted-path projection on the source side.
 
 ## Install
 
@@ -68,7 +68,8 @@ mapper.enrich_rows(
     row_key,                           # column name in rows to match on
     source_key,                        # field in source to match on
     *,
-    on_no_match="skip",                # "skip" | "error" | "blank"
+    how="left",                        # "left" | "inner" | "anti"
+    on_no_match="skip",                # "skip" | "error" | "blank"  (left only)
     allow_empty_source=False,          # if True, empty source is not an error
     skip_statuses=["error", "warning"],# rows with these statuses are passed through
 ) -> list[dict]
@@ -76,7 +77,17 @@ mapper.enrich_rows(
 
 Results are also stored in `mapper.rows`.
 
-### `on_no_match`
+### `how`
+
+| Value | Behaviour |
+|---|---|
+| `"left"` | All rows kept; unmatched rows handled by `on_no_match` |
+| `"inner"` | Only matched rows kept; mapping applied |
+| `"anti"` | Only unmatched rows kept; no mapping applied |
+
+Rows whose `row status` is in `skip_statuses` are always passed through unchanged, regardless of `how`.
+
+### `on_no_match` (left join only)
 
 | Value | Behaviour |
 |---|---|
@@ -126,7 +137,7 @@ This library is intentionally limited in scope — it handles one specific patte
 - [**glom**](https://glom.readthedocs.io) — powerful dotted-path access and transformation for arbitrarily nested Python data structures
 - [**jmespath**](https://jmespath.org) — JSON path-style queries for extracting values from nested dicts
 
-Choose this library when you're already working with `tha-*` row dicts and want to enrich them from a lookup list in one call — no DataFrame conversion, join and projection in a single step.
+Choose this library when you're already working with `tha-*` row dicts and want to join them against a lookup list in one call — no DataFrame conversion, join and projection in a single step.
 
 ## License
 
