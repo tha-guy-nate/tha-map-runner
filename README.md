@@ -131,13 +131,13 @@ runner.write("Step 2 of 2", "output.csv", rows=enriched)
 
 ## Alternatives
 
-This library is intentionally limited in scope — it handles one specific pattern: left-joining row dicts against a lookup list and projecting values via dotted paths. For more general needs:
+This library is intentionally limited in scope — it handles one specific pattern: joining row dicts against a lookup list on a single key and projecting values via dotted paths. For more general needs:
 
-- [**pandas**](https://pandas.pydata.org) — `DataFrame.merge()` covers join operations with far more flexibility (inner, outer, multi-key, aggregations)
+- [**pandas**](https://pandas.pydata.org) — `DataFrame.merge()` covers join operations with far more flexibility (outer, multi-key, aggregations)
 - [**glom**](https://glom.readthedocs.io) — powerful dotted-path access and transformation for arbitrarily nested Python data structures
 - [**jmespath**](https://jmespath.org) — JSON path-style queries for extracting values from nested dicts
 
-Choose this library when you're already working with `tha-*` row dicts and want to join them against a lookup list in one call — no DataFrame conversion, join and projection in a single step.
+Choose this library when you're already working with `tha-*` row dicts and want to join them against a lookup list in one call — no DataFrame conversion, left/inner/anti join and projection in a single step.
 
 ## License
 
