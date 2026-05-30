@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/tha-guy-nate/tha-map-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/tha-guy-nate/tha-map-runner/actions/workflows/ci.yml)
 
-A small Python library that joins a list of row dicts with a lookup source on a single key, projecting values into flat row columns via a mapping config.
+A small Python library that joins a list of row dicts with a lookup source, projecting values into flat row columns via a mapping config.
 
-Supports left, inner, and anti joins — all with dotted-path projection on the source side.
+Supports single-key and composite-key joins, left/inner/anti modes, and dotted-path projection into arbitrarily nested source data.
 
 ## Install
 
@@ -17,6 +17,12 @@ pip install tha-map-runner
 ```python
 from tha_map_runner import ThaMap
 
+mapper = ThaMap()
+```
+
+**Single-key** — match rows against a lookup source on one field:
+
+```python
 rows = [
     {"Org BK": "school-001", "Start Date": "08/15"},
     {"Org BK": "school-002", "Start Date": "08/16"},
@@ -27,23 +33,46 @@ api_response = [
     {"sourcedId": "school-002", "name": "Roosevelt Middle",   "parent": {"sourcedId": "dist-A"}},
 ]
 
-mapper = ThaMap()
 enriched = mapper.enrich_rows(
-    rows=rows,
+    rows,
     source=api_response,
     mapping={
         "Org Name":  "name",
-        "Parent BK": "parent.sourcedId",
+        "Parent BK": "parent.sourcedId",  # dotted path into nested source
     },
     row_key="Org BK",
-    source_key="sourcedId",
+    source_key="sourcedId",               # also supports dotted paths: "org.sourcedId"
+)
+```
+
+**Composite-key** — all key pairs must match simultaneously (use when a single field is ambiguous):
+
+```python
+rows = [
+    {"source_id": "s-001", "student": "Alice", "Term": "Fall"},
+    {"source_id": "s-001", "student": "Bob",   "Term": "Fall"},
+]
+
+api_response = [
+    {"org": {"id": "s-001"}, "profile": {"name": "Alice"}, "grade": "A"},
+    {"org": {"id": "s-001"}, "profile": {"name": "Bob"},   "grade": "B"},
+]
+
+enriched = mapper.enrich_rows(
+    rows,
+    source=api_response,
+    mapping={"Grade": "grade"},
+    keys=[
+        {"row_key": "source_id", "source_key": "org.id"},
+        {"row_key": "student",   "source_key": "profile.name"},
+    ],
 )
 ```
 
 ## How it works
 
-1. Builds an index of `source` on `source_key` — O(n+m), no nested loops
-2. For each row, looks up a match by `row[row_key]`
+1. Builds an index of `source` keyed by the match field(s) — O(n+m), no nested loops
+2. For each row, looks up a match; composite-key mode requires all pairs to agree
 3. Walks dotted paths (`"parent.sourcedId"`) into the matched source entry
 4. Projects resolved values into new columns on a copy of the row
 5. Returns a new list — input is never mutated
@@ -63,16 +92,35 @@ ThaMap()
 ```python
 mapper.enrich_rows(
     rows,                              # list of row dicts
-    source,                            # list of dicts to join against
+    source,                            # list of dicts to join against (any nesting depth)
     mapping,                           # {"output_column": "dotted.path"}
-    row_key,                           # column name in rows to match on
-    source_key,                        # field in source to match on
+    row_key="",                        # column name in rows to match on (single-key mode)
+    source_key="",                     # dotted path in source to match on (single-key mode)
     *,
+    keys=None,                         # composite-key mode: [{"row_key": "...", "source_key": "..."}, ...]
     how="left",                        # "left" | "inner" | "anti"
     on_no_match="skip",                # "skip" | "error" | "blank"  (left only)
     allow_empty_source=False,          # if True, empty source is not an error
     skip_statuses=["error", "warning"],# rows with these statuses are passed through
 ) -> list[dict]
+```
+
+Provide either `row_key` + `source_key` (single-key) or `keys` (composite-key) — not both.
+
+Both `source_key` and the `source_key` entries in `keys` support dotted paths into arbitrarily nested source data (e.g. `"org.sourcedId"`). `row_key` always matches against the flat row dict.
+
+**Composite-key example** — match only when both fields agree simultaneously:
+
+```python
+mapper.enrich_rows(
+    rows,
+    api_response,
+    mapping={"Grade": "grade", "Score": "score"},
+    keys=[
+        {"row_key": "source_id", "source_key": "org.sourcedId"},
+        {"row_key": "student",   "source_key": "student.profile.name"},
+    ],
+)
 ```
 
 Results are also stored in `mapper.rows`.
@@ -85,26 +133,46 @@ Enriches rows from a `fetch_by_pk` result (the `{table_name: {pk: record}}` shap
 mapper.enrich_from_ddb(
     rows,                              # list of row dicts
     ddb_result,                        # {table_name: {pk: record}} from ThaDdb.fetch_by_pk
-    table_name,                        # which table to scope the lookup to
     row_key,                           # column name in rows to match on (matched against pk)
     mapping,                           # {"output_column": "dotted.path"}
     *,
+    table_name="",                     # scope lookup to one table (all rows same table)
+    table_name_col="",                 # row column holding the table name (mixed-table rows)
     how="left",                        # "left" | "inner" | "anti"
     on_no_match="skip",                # "skip" | "error" | "blank"  (left only)
     skip_statuses=["error", "warning"],# rows with these statuses are passed through
 ) -> list[dict]
 ```
 
+Provide exactly one of `table_name` or `table_name_col` — not both, not neither.
+
 `not_found` entries in `ddb_result` are filtered automatically and treated as missing matches.
 
-For multi-table enrichment, merge results before calling:
+**Single-table** — all rows look up against the same table:
+
+```python
+enriched = mapper.enrich_from_ddb(rows, all_ddb, "user_id", {"Name": "name"}, table_name="users_table")
+```
+
+**Multi-table (chained)** — one call per table, each scoped explicitly:
 
 ```python
 all_ddb = {**ddb.fetch_by_pk("users_table", user_ids, key_name="id", key_type="S"),
            **ddb.fetch_by_pk("orders_table", order_ids, key_name="id", key_type="S")}
 
-enriched = mapper.enrich_from_ddb(rows, all_ddb, "users_table", "user_id", {"Name": "name"})
-enriched = mapper.enrich_from_ddb(enriched, all_ddb, "orders_table", "order_id", {"Status": "status"})
+enriched = mapper.enrich_from_ddb(rows, all_ddb, "user_id", {"Name": "name"}, table_name="users_table")
+enriched = mapper.enrich_from_ddb(enriched, all_ddb, "order_id", {"Status": "status"}, table_name="orders_table")
+```
+
+**Mixed-table rows** — rows have different tables; use `table_name_col` to route each row:
+
+```python
+rows = [
+    {"pk": "user-001", "source_table": "users_table"},
+    {"pk": "order-001", "source_table": "orders_table"},
+]
+
+enriched = mapper.enrich_from_ddb(rows, all_ddb, "pk", {"Name": "name"}, table_name_col="source_table")
 ```
 
 Results are also stored in `mapper.rows`.
