@@ -77,6 +77,38 @@ mapper.enrich_rows(
 
 Results are also stored in `mapper.rows`.
 
+### `mapper.enrich_from_ddb()`
+
+Enriches rows from a `fetch_by_pk` result (the `{table_name: {pk: record}}` shape returned by `tha-aws-runner`'s `ThaDdb.fetch_by_pk`). No `tha-aws-runner` import required — just pass the dict.
+
+```python
+mapper.enrich_from_ddb(
+    rows,                              # list of row dicts
+    ddb_result,                        # {table_name: {pk: record}} from ThaDdb.fetch_by_pk
+    table_name,                        # which table to scope the lookup to
+    row_key,                           # column name in rows to match on (matched against pk)
+    mapping,                           # {"output_column": "dotted.path"}
+    *,
+    how="left",                        # "left" | "inner" | "anti"
+    on_no_match="skip",                # "skip" | "error" | "blank"  (left only)
+    skip_statuses=["error", "warning"],# rows with these statuses are passed through
+) -> list[dict]
+```
+
+`not_found` entries in `ddb_result` are filtered automatically and treated as missing matches.
+
+For multi-table enrichment, merge results before calling:
+
+```python
+all_ddb = {**ddb.fetch_by_pk("users_table", user_ids, key_name="id", key_type="S"),
+           **ddb.fetch_by_pk("orders_table", order_ids, key_name="id", key_type="S")}
+
+enriched = mapper.enrich_from_ddb(rows, all_ddb, "users_table", "user_id", {"Name": "name"})
+enriched = mapper.enrich_from_ddb(enriched, all_ddb, "orders_table", "order_id", {"Status": "status"})
+```
+
+Results are also stored in `mapper.rows`.
+
 ### `how`
 
 | Value | Behaviour |
