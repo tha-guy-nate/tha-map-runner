@@ -329,3 +329,130 @@ def test_row_missing_row_key_treated_as_no_match(
         rows, json_items, mapping, "Org BK", "sourcedId", on_no_match="blank"
     )
     assert result[0]["Org Name"] == ""
+
+
+# --- enrich_from_ddb ---
+
+
+@pytest.fixture
+def ddb_result() -> dict:
+    return {
+        "users_table": {
+            "user-001": {"name": "Alice", "role": "admin"},
+            "user-002": {"name": "Bob", "role": "member"},
+            "user-003": {"not_found": True},
+        },
+        "orders_table": {
+            "order-001": {"status": "shipped"},
+        },
+    }
+
+
+@pytest.fixture
+def ddb_rows() -> list[dict]:
+    return [
+        {"user_id": "user-001", "Start Date": "08/15"},
+        {"user_id": "user-002", "Start Date": "08/16"},
+        {"user_id": "user-003", "Start Date": "08/17"},
+    ]
+
+
+@pytest.fixture
+def ddb_mapping() -> dict:
+    return {"Name": "name", "Role": "role"}
+
+
+def test_enrich_from_ddb_happy(mapper, ddb_result, ddb_rows, ddb_mapping):
+    result = mapper.enrich_from_ddb(ddb_rows, ddb_result, "users_table", "user_id", ddb_mapping)
+    assert result[0]["Name"] == "Alice"
+    assert result[0]["Role"] == "admin"
+    assert result[1]["Name"] == "Bob"
+
+
+def test_enrich_from_ddb_original_columns_preserved(mapper, ddb_result, ddb_rows, ddb_mapping):
+    result = mapper.enrich_from_ddb(ddb_rows, ddb_result, "users_table", "user_id", ddb_mapping)
+    assert result[0]["Start Date"] == "08/15"
+
+
+def test_enrich_from_ddb_not_found_treated_as_no_match(mapper, ddb_result, ddb_rows, ddb_mapping):
+    result = mapper.enrich_from_ddb(ddb_rows, ddb_result, "users_table", "user_id", ddb_mapping)
+    assert "Name" not in result[2]
+
+
+def test_enrich_from_ddb_multi_table(mapper, ddb_result, ddb_mapping):
+    rows = [{"user_id": "user-001", "order_id": "order-001", "Start Date": "08/15"}]
+    result = mapper.enrich_from_ddb(rows, ddb_result, "users_table", "user_id", ddb_mapping)
+    result2 = mapper.enrich_from_ddb(
+        result, ddb_result, "orders_table", "order_id", {"Status": "status"}
+    )
+    assert result2[0]["Name"] == "Alice"
+    assert result2[0]["Status"] == "shipped"
+
+
+def test_enrich_from_ddb_missing_table_raises(mapper, ddb_result, ddb_rows, ddb_mapping):
+    with pytest.raises(MapperError, match="not found in ddb_result"):
+        mapper.enrich_from_ddb(ddb_rows, ddb_result, "bad_table", "user_id", ddb_mapping)
+
+
+def test_enrich_from_ddb_inner(mapper, ddb_result, ddb_rows, ddb_mapping):
+    result = mapper.enrich_from_ddb(
+        ddb_rows, ddb_result, "users_table", "user_id", ddb_mapping, how="inner"
+    )
+    assert len(result) == 2
+    assert all(r["user_id"] in ("user-001", "user-002") for r in result)
+
+
+def test_enrich_from_ddb_anti(mapper, ddb_result, ddb_rows, ddb_mapping):
+    result = mapper.enrich_from_ddb(
+        ddb_rows, ddb_result, "users_table", "user_id", ddb_mapping, how="anti"
+    )
+    assert len(result) == 1
+    assert result[0]["user_id"] == "user-003"
+
+
+def test_enrich_from_ddb_on_no_match_error(mapper, ddb_result, ddb_rows, ddb_mapping):
+    result = mapper.enrich_from_ddb(
+        ddb_rows, ddb_result, "users_table", "user_id", ddb_mapping, on_no_match="error"
+    )
+    assert result[2]["row status"] == "error"
+    assert "user-003" in result[2]["message"]
+
+
+def test_enrich_from_ddb_on_no_match_blank(mapper, ddb_result, ddb_rows, ddb_mapping):
+    result = mapper.enrich_from_ddb(
+        ddb_rows, ddb_result, "users_table", "user_id", ddb_mapping, on_no_match="blank"
+    )
+    assert result[2]["Name"] == ""
+    assert result[2].get("row status") != "error"
+
+
+def test_enrich_from_ddb_skip_statuses(mapper, ddb_result, ddb_mapping):
+    rows = [{"user_id": "user-001", "row status": "error", "message": "bad"}]
+    result = mapper.enrich_from_ddb(rows, ddb_result, "users_table", "user_id", ddb_mapping)
+    assert "Name" not in result[0]
+    assert result[0]["row status"] == "error"
+
+
+def test_enrich_from_ddb_stores_rows(mapper, ddb_result, ddb_rows, ddb_mapping):
+    result = mapper.enrich_from_ddb(ddb_rows, ddb_result, "users_table", "user_id", ddb_mapping)
+    assert mapper.rows is result
+
+
+def test_enrich_from_ddb_input_not_mutated(mapper, ddb_result, ddb_rows, ddb_mapping):
+    original = [r.copy() for r in ddb_rows]
+    mapper.enrich_from_ddb(ddb_rows, ddb_result, "users_table", "user_id", ddb_mapping)
+    assert ddb_rows == original
+
+
+def test_enrich_from_ddb_invalid_how_raises(mapper, ddb_result, ddb_rows, ddb_mapping):
+    with pytest.raises(MapperError, match="how"):
+        mapper.enrich_from_ddb(
+            ddb_rows, ddb_result, "users_table", "user_id", ddb_mapping, how="outer"
+        )
+
+
+def test_enrich_from_ddb_invalid_on_no_match_raises(mapper, ddb_result, ddb_rows, ddb_mapping):
+    with pytest.raises(MapperError, match="on_no_match"):
+        mapper.enrich_from_ddb(
+            ddb_rows, ddb_result, "users_table", "user_id", ddb_mapping, on_no_match="bad"
+        )

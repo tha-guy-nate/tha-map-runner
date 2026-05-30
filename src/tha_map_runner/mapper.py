@@ -95,3 +95,74 @@ class ThaMap:
 
         self.rows = output
         return output
+
+    def enrich_from_ddb(
+        self,
+        rows: list[dict],
+        ddb_result: dict[str, dict[str, dict]],
+        table_name: str,
+        row_key: str,
+        mapping: dict[str, str],
+        *,
+        how: str = "left",
+        on_no_match: str = "skip",
+        skip_statuses: list[str] | None = None,
+    ) -> list[dict]:
+        if how not in _HOW:
+            raise MapperError(f"how must be one of {sorted(_HOW)}, got {how!r}")
+        if on_no_match not in _ON_NO_MATCH:
+            raise MapperError(
+                f"on_no_match must be one of {sorted(_ON_NO_MATCH)}, got {on_no_match!r}"
+            )
+        if table_name not in ddb_result:
+            raise MapperError(f"table {table_name!r} not found in ddb_result")
+
+        statuses_to_skip = set(
+            skip_statuses if skip_statuses is not None else ["error", "warning"]
+        )
+
+        index: dict[object, dict] = {
+            pk: record
+            for pk, record in ddb_result[table_name].items()
+            if not record.get("not_found")
+        }
+
+        output: list[dict] = []
+        for row in rows:
+            if row.get("row status") in statuses_to_skip:
+                output.append(row.copy())
+                continue
+
+            key_val = row.get(row_key)
+            match = index.get(key_val)
+
+            if how == "anti":
+                if match is None:
+                    output.append(row.copy())
+                continue
+
+            if match is None:
+                if how == "inner":
+                    continue
+                new_row = row.copy()
+                if on_no_match == "error":
+                    new_row["row status"] = "error"
+                    new_row["message"] = (
+                        f"No match for {row_key}={key_val!r} in {table_name!r}"
+                    )
+                    for field in mapping:
+                        new_row[field] = ""
+                elif on_no_match == "blank":
+                    for field in mapping:
+                        new_row[field] = ""
+                output.append(new_row)
+                continue
+
+            new_row = row.copy()
+            for field, path in mapping.items():
+                value = resolve_path(match, path)
+                new_row[field] = "" if value is None else value
+            output.append(new_row)
+
+        self.rows = output
+        return output
