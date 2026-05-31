@@ -554,6 +554,22 @@ def test_enrich_from_ddb_not_found_treated_as_no_match(mapper, ddb_result, ddb_r
     assert "Name" not in result[2]
 
 
+def test_enrich_from_ddb_error_treated_as_no_match(mapper, ddb_rows, ddb_mapping):
+    ddb_result = {
+        "users_table": {
+            "user-001": {"name": "Alice", "role": "admin"},
+            "user-002": {"error": "AccessDeniedException"},
+            "user-003": {"not_found": True},
+        }
+    }
+    result = mapper.enrich_from_ddb(
+        ddb_rows, ddb_result, "user_id", ddb_mapping, table_name="users_table"
+    )
+    assert result[0]["Name"] == "Alice"
+    assert "Name" not in result[1]
+    assert "Name" not in result[2]
+
+
 def test_enrich_from_ddb_multi_table(mapper, ddb_result, ddb_mapping):
     rows = [{"user_id": "user-001", "order_id": "order-001", "Start Date": "08/15"}]
     result = mapper.enrich_from_ddb(
@@ -697,3 +713,21 @@ def test_enrich_from_ddb_table_name_col_not_found_no_match(mapper, ddb_result, d
         rows, ddb_result, "user_id", ddb_mapping, table_name_col="tbl"
     )
     assert "Name" not in result[0]
+
+
+def test_enrich_from_ddb_table_name_col_error_treated_as_no_match(mapper, ddb_mapping):
+    ddb_result = {
+        "users_table": {
+            "user-001": {"name": "Alice", "role": "admin"},
+            "user-002": {"error": "AccessDeniedException"},
+        }
+    }
+    rows = [
+        {"user_id": "user-001", "tbl": "users_table"},
+        {"user_id": "user-002", "tbl": "users_table"},
+    ]
+    result = mapper.enrich_from_ddb(
+        rows, ddb_result, "user_id", ddb_mapping, table_name_col="tbl"
+    )
+    assert result[0]["Name"] == "Alice"
+    assert "Name" not in result[1]

@@ -146,7 +146,7 @@ mapper.enrich_from_ddb(
 
 Provide exactly one of `table_name` or `table_name_col` — not both, not neither.
 
-`not_found` entries in `ddb_result` are filtered automatically and treated as missing matches.
+`not_found` and `error` entries in `ddb_result` are filtered automatically and treated as missing matches.
 
 **Single-table** — all rows look up against the same table:
 
@@ -157,8 +157,8 @@ enriched = mapper.enrich_from_ddb(rows, all_ddb, "user_id", {"Name": "name"}, ta
 **Multi-table (chained)** — one call per table, each scoped explicitly:
 
 ```python
-all_ddb = {**ddb.fetch_by_pk("users_table", user_ids, key_name="id", key_type="S"),
-           **ddb.fetch_by_pk("orders_table", order_ids, key_name="id", key_type="S")}
+all_ddb = {**ddb.batch_fetch_by_pk("users_table", user_ids, key_name="id", key_type="S"),
+           **ddb.batch_fetch_by_pk("orders_table", order_ids, key_name="id", key_type="S")}
 
 enriched = mapper.enrich_from_ddb(rows, all_ddb, "user_id", {"Name": "name"}, table_name="users_table")
 enriched = mapper.enrich_from_ddb(enriched, all_ddb, "order_id", {"Status": "status"}, table_name="orders_table")
