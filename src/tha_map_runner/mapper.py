@@ -167,7 +167,10 @@ class ThaMap:
             if table_name_col:
                 tbl = str(row.get(table_name_col) or "")
                 record = ddb_result.get(tbl, {}).get(key_val)  # type: ignore[arg-type]
-                match = record if record and not record.get("not_found") and "error" not in record else None
+                match = (
+                    record if record and not record.get("not_found") and "error" not in record
+                    else None
+                )
             else:
                 match = fixed_index.get(key_val)
 
