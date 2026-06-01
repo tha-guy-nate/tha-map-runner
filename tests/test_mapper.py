@@ -507,12 +507,12 @@ def test_keys_duplicate_warns(mapper, mk_keys, mk_mapping):
 def ddb_result() -> dict:
     return {
         "users_table": {
-            "user-001": {"name": "Alice", "role": "admin"},
-            "user-002": {"name": "Bob", "role": "member"},
-            "user-003": {"not_found": True},
+            "user-001": {"status": "ok", "message": None, "pk": "user-001", "table": "users_table", "data": {"name": "Alice", "role": "admin"}},  # noqa: E501
+            "user-002": {"status": "ok", "message": None, "pk": "user-002", "table": "users_table", "data": {"name": "Bob", "role": "member"}},  # noqa: E501
+            "user-003": {"status": "not_found", "message": "Item not found", "pk": "user-003", "table": "users_table", "data": None},  # noqa: E501
         },
         "orders_table": {
-            "order-001": {"status": "shipped"},
+            "order-001": {"status": "ok", "message": None, "pk": "order-001", "table": "orders_table", "data": {"status": "shipped"}},  # noqa: E501
         },
     }
 
@@ -557,9 +557,9 @@ def test_enrich_from_ddb_not_found_treated_as_no_match(mapper, ddb_result, ddb_r
 def test_enrich_from_ddb_error_treated_as_no_match(mapper, ddb_rows, ddb_mapping):
     ddb_result = {
         "users_table": {
-            "user-001": {"name": "Alice", "role": "admin"},
-            "user-002": {"error": "AccessDeniedException"},
-            "user-003": {"not_found": True},
+            "user-001": {"status": "ok", "message": None, "pk": "user-001", "table": "users_table", "data": {"name": "Alice", "role": "admin"}},  # noqa: E501
+            "user-002": {"status": "error", "message": "AccessDeniedException", "pk": "user-002", "table": "users_table", "data": None},  # noqa: E501
+            "user-003": {"status": "not_found", "message": "Item not found", "pk": "user-003", "table": "users_table", "data": None},  # noqa: E501
         }
     }
     result = mapper.enrich_from_ddb(
@@ -718,8 +718,8 @@ def test_enrich_from_ddb_table_name_col_not_found_no_match(mapper, ddb_result, d
 def test_enrich_from_ddb_table_name_col_error_treated_as_no_match(mapper, ddb_mapping):
     ddb_result = {
         "users_table": {
-            "user-001": {"name": "Alice", "role": "admin"},
-            "user-002": {"error": "AccessDeniedException"},
+            "user-001": {"status": "ok", "message": None, "pk": "user-001", "table": "users_table", "data": {"name": "Alice", "role": "admin"}},  # noqa: E501
+            "user-002": {"status": "error", "message": "AccessDeniedException", "pk": "user-002", "table": "users_table", "data": None},  # noqa: E501
         }
     }
     rows = [

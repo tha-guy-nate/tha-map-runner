@@ -153,7 +153,7 @@ class ThaMap:
             fixed_index = {
                 pk: record
                 for pk, record in ddb_result[table_name].items()
-                if not record.get("not_found") and "error" not in record
+                if record.get("status") == "ok"
             }
 
         output: list[dict] = []
@@ -167,10 +167,7 @@ class ThaMap:
             if table_name_col:
                 tbl = str(row.get(table_name_col) or "")
                 record = ddb_result.get(tbl, {}).get(key_val)  # type: ignore[arg-type]
-                match = (
-                    record if record and not record.get("not_found") and "error" not in record
-                    else None
-                )
+                match = record if record and record.get("status") == "ok" else None
             else:
                 match = fixed_index.get(key_val)
 
@@ -197,7 +194,7 @@ class ThaMap:
 
             new_row = row.copy()
             for field, path in mapping.items():
-                value = resolve_path(match, path)
+                value = resolve_path(match["data"], path)
                 new_row[field] = "" if value is None else value
             output.append(new_row)
 
