@@ -120,6 +120,90 @@ class ThaMap:
         self.rows = output
         return output
 
+    def expand_rows(
+        self,
+        rows: list[dict],
+        source: list[dict],
+        mapping: dict[str, str],
+        *,
+        row_key: str,
+        source_key: str,
+        how: str = "left",
+        on_no_match: str = "skip",
+        allow_empty_source: bool = False,
+        skip_statuses: list[str] | None = None,
+    ) -> list[dict]:
+        """Fan out rows against source — one output row per matching source record.
+
+        Unlike enrich_rows (one-to-one), this produces N output rows for a row
+        with N matches. Use it when source contains many records per row key
+        (e.g. assessment records fetched per district).
+        """
+        if how not in _HOW:
+            raise MapperError(f"how must be one of {sorted(_HOW)}, got {how!r}")
+        if on_no_match not in _ON_NO_MATCH:
+            raise MapperError(
+                f"on_no_match must be one of {sorted(_ON_NO_MATCH)}, got {on_no_match!r}"
+            )
+
+        statuses_to_skip = set(
+            skip_statuses if skip_statuses is not None else ["error", "warning"]
+        )
+
+        if not source:
+            if not allow_empty_source:
+                raise MapperError("source is empty — pass allow_empty_source=True to allow this")
+            if how == "inner":
+                self.rows = []
+                return []
+            result = [row.copy() for row in rows]
+            self.rows = result
+            return result
+
+        index: dict[object, list[dict]] = {}
+        for item in source:
+            k: object = resolve_path(item, source_key)
+            index.setdefault(k, []).append(item)
+
+        output: list[dict] = []
+        for row in rows:
+            if row.get("row status") in statuses_to_skip:
+                output.append(row.copy())
+                continue
+
+            key_val: object = row.get(row_key)
+            matches = index.get(key_val, [])
+
+            if how == "anti":
+                if not matches:
+                    output.append(row.copy())
+                continue
+
+            if not matches:
+                if how == "inner":
+                    continue
+                new_row = row.copy()
+                if on_no_match == "error":
+                    new_row["row status"] = "error"
+                    new_row["message"] = f"No match for {row_key}={key_val!r}"
+                    for field in mapping:
+                        new_row[field] = ""
+                elif on_no_match == "blank":
+                    for field in mapping:
+                        new_row[field] = ""
+                output.append(new_row)
+                continue
+
+            for match in matches:
+                new_row = row.copy()
+                for field, path in mapping.items():
+                    value = resolve_path(match, path)
+                    new_row[field] = "" if value is None else value
+                output.append(new_row)
+
+        self.rows = output
+        return output
+
     def enrich_from_ddb(
         self,
         rows: list[dict],
