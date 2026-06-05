@@ -229,6 +229,44 @@ enriched = mapper.enrich_rows(
 runner.write("Step 2 of 2", "output.csv", rows=enriched)
 ```
 
+### `mapper.expand_rows()`
+
+Like `enrich_rows` but one-to-many: produces N output rows for a row with N matches in source. Use when source contains multiple records per row key (e.g. assessment records fetched per district via `batch_get_all`).
+
+```python
+mapper.expand_rows(
+    rows,                              # list of row dicts
+    source,                            # list of dicts to fan out against
+    mapping,                           # {"output_column": "dotted.path"}
+    *,
+    row_key,                           # column name in rows to match on
+    source_key,                        # dotted path in source to match on
+    how="left",                        # "left" | "inner" | "anti"
+    on_no_match="skip",                # "skip" | "error" | "blank"  (left only)
+    allow_empty_source=False,          # if True, empty source is not an error
+    skip_statuses=["error", "warning"],# rows with these statuses are passed through
+) -> list[dict]
+```
+
+```python
+# Fetch all assessments per district (returns flat list with "District BK" injected per record)
+flat = runner.batch_get_all(token_rows, key_col="District BK", workers=4)
+
+# Fan out district rows — one output row per assessment
+expanded = mapper.expand_rows(
+    district_rows,
+    source=flat,
+    mapping={
+        "Assessment ID": "id",
+        "Score":         "scoreResults[0].result",
+    },
+    row_key="District BK",
+    source_key="District BK",
+)
+```
+
+`how` and `on_no_match` behave identically to `enrich_rows`. Results stored in `mapper.rows`.
+
 ## Alternatives
 
 This library is intentionally limited in scope — it handles one specific pattern: joining row dicts against a lookup list on a single key and projecting values via dotted paths. For more general needs:
