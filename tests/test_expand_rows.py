@@ -264,6 +264,20 @@ def test_expand_invalid_how(mapper, district_rows, assessment_records, mapping):
         )
 
 
+def test_expand_nested_list_path(mapper, district_rows) -> None:
+    source = [
+        {"District BK": "100", "id": "a1", "scoreResults": [{"result": "85"}]},
+        {"District BK": "200", "id": "a2", "scoreResults": [{"result": "90"}]},
+    ]
+    result = mapper.expand_rows(
+        district_rows, source,
+        mapping={"Assessment ID": "id", "Score": "scoreResults.result"},
+        row_key="District BK", source_key="District BK",
+    )
+    scores = {r["Assessment ID"]: r["Score"] for r in result}
+    assert scores == {"a1": "85", "a2": "90"}
+
+
 def test_expand_invalid_on_no_match(mapper, district_rows, assessment_records, mapping):
     with pytest.raises(MapperError, match="on_no_match must be one of"):
         mapper.expand_rows(
