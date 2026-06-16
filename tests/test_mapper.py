@@ -65,6 +65,7 @@ def test_enrich_rows_stores_rows(
 
 # --- on_no_match="skip" (default) ---
 
+
 def test_no_match_skip_leaves_row_unchanged(
     rows: list[dict], mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
 ) -> None:
@@ -75,6 +76,7 @@ def test_no_match_skip_leaves_row_unchanged(
 
 
 # --- on_no_match="error" ---
+
 
 def test_no_match_error_sets_row_status(
     rows: list[dict], mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
@@ -100,6 +102,7 @@ def test_no_match_error_blanks_mapping_fields(
 
 # --- on_no_match="blank" ---
 
+
 def test_no_match_blank_adds_empty_columns(
     rows: list[dict], mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
 ) -> None:
@@ -120,6 +123,7 @@ def test_invalid_on_no_match_raises(
 
 
 # --- how="inner" ---
+
 
 def test_inner_keeps_only_matched_rows(
     rows: list[dict], mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
@@ -172,6 +176,7 @@ def test_inner_stores_rows(
 
 
 # --- how="anti" ---
+
 
 def test_anti_keeps_only_unmatched_rows(
     rows: list[dict], mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
@@ -232,6 +237,7 @@ def test_invalid_how_raises(
 
 # --- allow_empty_source ---
 
+
 def test_empty_source_raises_by_default(
     rows: list[dict], mapper: ThaMap, mapping: dict[str, str]
 ) -> None:
@@ -239,15 +245,14 @@ def test_empty_source_raises_by_default(
         mapper.enrich_rows(rows, [], mapping, "Org BK", "sourcedId")
 
 
-def test_empty_source_allowed(
-    rows: list[dict], mapper: ThaMap, mapping: dict[str, str]
-) -> None:
+def test_empty_source_allowed(rows: list[dict], mapper: ThaMap, mapping: dict[str, str]) -> None:
     result = mapper.enrich_rows(rows, [], mapping, "Org BK", "sourcedId", allow_empty_source=True)
     assert len(result) == len(rows)
     assert "Org Name" not in result[0]
 
 
 # --- skip_statuses ---
+
 
 def test_error_rows_skipped_by_default(
     mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
@@ -282,13 +287,12 @@ def test_empty_skip_statuses_processes_all(
     mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
 ) -> None:
     rows = [{"Org BK": "school-001", "row status": "error", "message": "bad row"}]
-    result = mapper.enrich_rows(
-        rows, json_items, mapping, "Org BK", "sourcedId", skip_statuses=[]
-    )
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId", skip_statuses=[])
     assert result[0]["Org Name"] == "Lincoln Elementary"
 
 
 # --- duplicate source_key warning ---
+
 
 def test_duplicate_source_key_warns(
     rows: list[dict], mapper: ThaMap, mapping: dict[str, str]
@@ -305,6 +309,7 @@ def test_duplicate_source_key_warns(
 
 
 # --- edge cases ---
+
 
 def test_empty_rows_returns_empty(
     mapper: ThaMap, json_items: list[dict], mapping: dict[str, str]
@@ -323,10 +328,16 @@ def test_missing_path_in_source_gives_empty_string(
 
 def test_enrich_rows_dotted_source_key(mapper, rows, mapping):
     source = [
-        {"meta": {"sourcedId": "school-001"}, "name": "Lincoln Elementary",
-         "parent": {"sourcedId": "dist-A"}},
-        {"meta": {"sourcedId": "school-002"}, "name": "Roosevelt Middle",
-         "parent": {"sourcedId": "dist-A"}},
+        {
+            "meta": {"sourcedId": "school-001"},
+            "name": "Lincoln Elementary",
+            "parent": {"sourcedId": "dist-A"},
+        },
+        {
+            "meta": {"sourcedId": "school-002"},
+            "name": "Roosevelt Middle",
+            "parent": {"sourcedId": "dist-A"},
+        },
     ]
     result = mapper.enrich_rows(rows, source, mapping, "Org BK", "meta.sourcedId")
     assert result[0]["Org Name"] == "Lincoln Elementary"
@@ -427,9 +438,7 @@ def test_keys_anti(mapper, mk_source, mk_rows, mk_keys, mk_mapping):
 
 
 def test_keys_on_no_match_error(mapper, mk_source, mk_rows, mk_keys, mk_mapping):
-    result = mapper.enrich_rows(
-        mk_rows, mk_source, mk_mapping, keys=mk_keys, on_no_match="error"
-    )
+    result = mapper.enrich_rows(mk_rows, mk_source, mk_mapping, keys=mk_keys, on_no_match="error")
     no_match = result[3]
     assert no_match["row status"] == "error"
     assert "Ghost" in no_match["message"]
@@ -437,9 +446,7 @@ def test_keys_on_no_match_error(mapper, mk_source, mk_rows, mk_keys, mk_mapping)
 
 
 def test_keys_on_no_match_blank(mapper, mk_source, mk_rows, mk_keys, mk_mapping):
-    result = mapper.enrich_rows(
-        mk_rows, mk_source, mk_mapping, keys=mk_keys, on_no_match="blank"
-    )
+    result = mapper.enrich_rows(mk_rows, mk_source, mk_mapping, keys=mk_keys, on_no_match="blank")
     no_match = result[3]
     assert no_match["Grade"] == ""
     assert no_match.get("row status") != "error"
@@ -507,12 +514,36 @@ def test_keys_duplicate_warns(mapper, mk_keys, mk_mapping):
 def ddb_result() -> dict:
     return {
         "users_table": {
-            "user-001": {"status": None, "message": None, "pk": "user-001", "table": "users_table", "data": {"name": "Alice", "role": "admin"}},  # noqa: E501
-            "user-002": {"status": None, "message": None, "pk": "user-002", "table": "users_table", "data": {"name": "Bob", "role": "member"}},  # noqa: E501
-            "user-003": {"status": "error", "message": "Item not found", "pk": "user-003", "table": "users_table", "data": None},  # noqa: E501
+            "user-001": {
+                "status": None,
+                "message": None,
+                "pk": "user-001",
+                "table": "users_table",
+                "data": {"name": "Alice", "role": "admin"},
+            },
+            "user-002": {
+                "status": None,
+                "message": None,
+                "pk": "user-002",
+                "table": "users_table",
+                "data": {"name": "Bob", "role": "member"},
+            },
+            "user-003": {
+                "status": "error",
+                "message": "Item not found",
+                "pk": "user-003",
+                "table": "users_table",
+                "data": None,
+            },
         },
         "orders_table": {
-            "order-001": {"status": None, "message": None, "pk": "order-001", "table": "orders_table", "data": {"status": "shipped"}},  # noqa: E501
+            "order-001": {
+                "status": None,
+                "message": None,
+                "pk": "order-001",
+                "table": "orders_table",
+                "data": {"status": "shipped"},
+            },
         },
     }
 
@@ -557,9 +588,27 @@ def test_enrich_from_ddb_not_found_treated_as_no_match(mapper, ddb_result, ddb_r
 def test_enrich_from_ddb_error_treated_as_no_match(mapper, ddb_rows, ddb_mapping):
     ddb_result = {
         "users_table": {
-            "user-001": {"status": None, "message": None, "pk": "user-001", "table": "users_table", "data": {"name": "Alice", "role": "admin"}},  # noqa: E501
-            "user-002": {"status": "error", "message": "AccessDeniedException", "pk": "user-002", "table": "users_table", "data": None},  # noqa: E501
-            "user-003": {"status": "error", "message": "Item not found", "pk": "user-003", "table": "users_table", "data": None},  # noqa: E501
+            "user-001": {
+                "status": None,
+                "message": None,
+                "pk": "user-001",
+                "table": "users_table",
+                "data": {"name": "Alice", "role": "admin"},
+            },
+            "user-002": {
+                "status": "error",
+                "message": "AccessDeniedException",
+                "pk": "user-002",
+                "table": "users_table",
+                "data": None,
+            },
+            "user-003": {
+                "status": "error",
+                "message": "Item not found",
+                "pk": "user-003",
+                "table": "users_table",
+                "data": None,
+            },
         }
     }
     result = mapper.enrich_from_ddb(
@@ -595,8 +644,12 @@ def test_enrich_from_ddb_no_table_arg_raises(mapper, ddb_result, ddb_rows, ddb_m
 def test_enrich_from_ddb_both_table_args_raises(mapper, ddb_result, ddb_rows, ddb_mapping):
     with pytest.raises(MapperError, match="exactly one of table_name or table_name_col"):
         mapper.enrich_from_ddb(
-            ddb_rows, ddb_result, "user_id", ddb_mapping,
-            table_name="users_table", table_name_col="tbl",
+            ddb_rows,
+            ddb_result,
+            "user_id",
+            ddb_mapping,
+            table_name="users_table",
+            table_name_col="tbl",
         )
 
 
@@ -664,8 +717,12 @@ def test_enrich_from_ddb_invalid_how_raises(mapper, ddb_result, ddb_rows, ddb_ma
 def test_enrich_from_ddb_invalid_on_no_match_raises(mapper, ddb_result, ddb_rows, ddb_mapping):
     with pytest.raises(MapperError, match="on_no_match"):
         mapper.enrich_from_ddb(
-            ddb_rows, ddb_result, "user_id", ddb_mapping,
-            table_name="users_table", on_no_match="bad",
+            ddb_rows,
+            ddb_result,
+            "user_id",
+            ddb_mapping,
+            table_name="users_table",
+            on_no_match="bad",
         )
 
 
@@ -689,9 +746,7 @@ def test_enrich_from_ddb_table_name_col_mixed_tables(mapper, ddb_result):
         {"pk": "user-001", "tbl": "users_table"},
         {"pk": "order-001", "tbl": "orders_table"},
     ]
-    result = mapper.enrich_from_ddb(
-        rows, ddb_result, "pk", {"Val": "name"}, table_name_col="tbl"
-    )
+    result = mapper.enrich_from_ddb(rows, ddb_result, "pk", {"Val": "name"}, table_name_col="tbl")
     assert result[0]["Val"] == "Alice"
     result2 = mapper.enrich_from_ddb(
         rows, ddb_result, "pk", {"Val": "status"}, table_name_col="tbl"
@@ -709,25 +764,33 @@ def test_enrich_from_ddb_table_name_col_missing_table_no_match(mapper, ddb_resul
 
 def test_enrich_from_ddb_table_name_col_not_found_no_match(mapper, ddb_result, ddb_mapping):
     rows = [{"user_id": "user-003", "tbl": "users_table"}]
-    result = mapper.enrich_from_ddb(
-        rows, ddb_result, "user_id", ddb_mapping, table_name_col="tbl"
-    )
+    result = mapper.enrich_from_ddb(rows, ddb_result, "user_id", ddb_mapping, table_name_col="tbl")
     assert "Name" not in result[0]
 
 
 def test_enrich_from_ddb_table_name_col_error_treated_as_no_match(mapper, ddb_mapping):
     ddb_result = {
         "users_table": {
-            "user-001": {"status": None, "message": None, "pk": "user-001", "table": "users_table", "data": {"name": "Alice", "role": "admin"}},  # noqa: E501
-            "user-002": {"status": "error", "message": "AccessDeniedException", "pk": "user-002", "table": "users_table", "data": None},  # noqa: E501
+            "user-001": {
+                "status": None,
+                "message": None,
+                "pk": "user-001",
+                "table": "users_table",
+                "data": {"name": "Alice", "role": "admin"},
+            },
+            "user-002": {
+                "status": "error",
+                "message": "AccessDeniedException",
+                "pk": "user-002",
+                "table": "users_table",
+                "data": None,
+            },
         }
     }
     rows = [
         {"user_id": "user-001", "tbl": "users_table"},
         {"user_id": "user-002", "tbl": "users_table"},
     ]
-    result = mapper.enrich_from_ddb(
-        rows, ddb_result, "user_id", ddb_mapping, table_name_col="tbl"
-    )
+    result = mapper.enrich_from_ddb(rows, ddb_result, "user_id", ddb_mapping, table_name_col="tbl")
     assert result[0]["Name"] == "Alice"
     assert "Name" not in result[1]

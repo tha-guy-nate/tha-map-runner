@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tha-map-runner"
-version = "0.2.7"
+version = "0.2.8"
 description = "A Tabular Helper API library that maps and joins dict-like data into row dicts using dotted-path projection."
 readme = "README.md"
 license = { text = "MIT" }
@@ -15,6 +15,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Intended Audience :: Developers",

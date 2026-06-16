@@ -39,9 +39,7 @@ class ThaMap:
         elif not row_key or not source_key:
             raise MapperError("provide either keys or both row_key and source_key")
 
-        statuses_to_skip = set(
-            skip_statuses if skip_statuses is not None else ["error", "warning"]
-        )
+        statuses_to_skip = set(skip_statuses if skip_statuses is not None else ["error", "warning"])
 
         if not source:
             if not allow_empty_source:
@@ -146,9 +144,7 @@ class ThaMap:
                 f"on_no_match must be one of {sorted(_ON_NO_MATCH)}, got {on_no_match!r}"
             )
 
-        statuses_to_skip = set(
-            skip_statuses if skip_statuses is not None else ["error", "warning"]
-        )
+        statuses_to_skip = set(skip_statuses if skip_statuses is not None else ["error", "warning"])
 
         if not source:
             if not allow_empty_source:
@@ -226,9 +222,7 @@ class ThaMap:
         if bool(table_name) == bool(table_name_col):
             raise MapperError("provide exactly one of table_name or table_name_col")
 
-        statuses_to_skip = set(
-            skip_statuses if skip_statuses is not None else ["error", "warning"]
-        )
+        statuses_to_skip = set(skip_statuses if skip_statuses is not None else ["error", "warning"])
 
         fixed_index: dict[object, dict] = {}
         if table_name:
