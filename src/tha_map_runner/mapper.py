@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import Any
 
 from .errors import MapperError
 from .paths import resolve_path
@@ -11,12 +12,12 @@ _ON_NO_MATCH = {"skip", "error", "blank"}
 
 class ThaMap:
     def __init__(self) -> None:
-        self.rows: list[dict] = []
+        self.rows: list[dict[str, Any]] = []
 
     def enrich_rows(
         self,
-        rows: list[dict],
-        source: list[dict],
+        rows: list[dict[str, Any]],
+        source: list[dict[str, Any]],
         mapping: dict[str, str],
         row_key: str = "",
         source_key: str = "",
@@ -26,7 +27,7 @@ class ThaMap:
         on_no_match: str = "skip",
         allow_empty_source: bool = False,
         skip_statuses: list[str] | None = None,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         if how not in _HOW:
             raise MapperError(f"how must be one of {sorted(_HOW)}, got {how!r}")
         if on_no_match not in _ON_NO_MATCH:
@@ -51,7 +52,7 @@ class ThaMap:
             self.rows = result
             return result
 
-        index: dict[object, dict] = {}
+        index: dict[object, dict[str, Any]] = {}
         if keys is not None:
             for item in source:
                 k: object = tuple(resolve_path(item, kd["source_key"]) for kd in keys)
@@ -71,7 +72,7 @@ class ThaMap:
                     )
                 index[k] = item
 
-        output: list[dict] = []
+        output: list[dict[str, Any]] = []
         for row in rows:
             if row.get("row status") in statuses_to_skip:
                 output.append(row.copy())
@@ -120,8 +121,8 @@ class ThaMap:
 
     def expand_rows(
         self,
-        rows: list[dict],
-        source: list[dict],
+        rows: list[dict[str, Any]],
+        source: list[dict[str, Any]],
         mapping: dict[str, str],
         *,
         row_key: str,
@@ -130,7 +131,7 @@ class ThaMap:
         on_no_match: str = "skip",
         allow_empty_source: bool = False,
         skip_statuses: list[str] | None = None,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """Fan out rows against source — one output row per matching source record.
 
         Unlike enrich_rows (one-to-one), this produces N output rows for a row
@@ -156,12 +157,12 @@ class ThaMap:
             self.rows = result
             return result
 
-        index: dict[object, list[dict]] = {}
+        index: dict[object, list[dict[str, Any]]] = {}
         for item in source:
             k: object = resolve_path(item, source_key)
             index.setdefault(k, []).append(item)
 
-        output: list[dict] = []
+        output: list[dict[str, Any]] = []
         for row in rows:
             if row.get("row status") in statuses_to_skip:
                 output.append(row.copy())
@@ -202,8 +203,8 @@ class ThaMap:
 
     def enrich_from_ddb(
         self,
-        rows: list[dict],
-        ddb_result: dict[str, dict[str, dict]],
+        rows: list[dict[str, Any]],
+        ddb_result: dict[str, dict[str, dict[str, Any]]],
         row_key: str,
         mapping: dict[str, str],
         *,
@@ -212,7 +213,7 @@ class ThaMap:
         how: str = "left",
         on_no_match: str = "skip",
         skip_statuses: list[str] | None = None,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         if how not in _HOW:
             raise MapperError(f"how must be one of {sorted(_HOW)}, got {how!r}")
         if on_no_match not in _ON_NO_MATCH:
@@ -224,7 +225,7 @@ class ThaMap:
 
         statuses_to_skip = set(skip_statuses if skip_statuses is not None else ["error", "warning"])
 
-        fixed_index: dict[object, dict] = {}
+        fixed_index: dict[object, dict[str, Any]] = {}
         if table_name:
             if table_name not in ddb_result:
                 raise MapperError(f"table {table_name!r} not found in ddb_result")
@@ -234,7 +235,7 @@ class ThaMap:
                 if record.get("status") is None
             }
 
-        output: list[dict] = []
+        output: list[dict[str, Any]] = []
         for row in rows:
             if row.get("row status") in statuses_to_skip:
                 output.append(row.copy())
