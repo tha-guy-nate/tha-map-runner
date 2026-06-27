@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tha-map-runner"
-version = "0.2.8"
+version = "0.2.9"
 description = "A Tabular Helper API library that maps and joins dict-like data into row dicts using dotted-path projection."
 readme = "README.md"
 license = { text = "MIT" }
@@ -47,6 +47,7 @@ target-version = "py310"
 select = ["E", "F", "I", "B", "UP", "RUF"]
 
 [tool.mypy]
+strict = true
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
