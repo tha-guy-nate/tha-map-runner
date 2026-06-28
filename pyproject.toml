@@ -35,6 +35,7 @@ dev = [
 [project.urls]
 Homepage = "https://github.com/tha-guy-nate/tha-map-runner"
 Issues = "https://github.com/tha-guy-nate/tha-map-runner/issues"
+Changelog = "https://github.com/tha-guy-nate/tha-map-runner/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tha_map_runner"]

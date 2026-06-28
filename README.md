@@ -1,6 +1,9 @@
 # tha-map-runner
 
 [![CI](https://github.com/tha-guy-nate/tha-map-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/tha-guy-nate/tha-map-runner/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/tha-map-runner)](https://pypi.org/project/tha-map-runner/)
+[![Python](https://img.shields.io/pypi/pyversions/tha-map-runner)](https://pypi.org/project/tha-map-runner/)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 
 A small Python library that joins a list of row dicts with a lookup source, projecting values into flat row columns via a mapping config.
 
