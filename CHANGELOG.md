@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.10] - 2026-07-04
+### Fixed
+- `__init__.py` `__version__` was stale at `0.2.8` while `pyproject.toml` and PyPI were already at `0.2.9` — now back in sync.
+- Test coverage gap in `resolve_path`: added a test covering nested list-of-lists path traversal. Coverage is now 100%.
+
 ## [0.2.9] - 2026-06-27
 ### Changed
 - Enabled mypy strict mode for comprehensive type checking.
