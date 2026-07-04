@@ -60,3 +60,8 @@ def test_list_traversal_missing_key_in_item() -> None:
 def test_list_traversal_non_dict_item() -> None:
     obj = {"a": ["string", 99]}
     assert resolve_path(obj, "a.b") == [None, None]
+
+
+def test_list_traversal_nested_list_of_lists() -> None:
+    obj = {"a": [[{"c": 1}, "skip"], [{"c": 2}]]}
+    assert resolve_path(obj, "a.c") == [1, None, 2]
