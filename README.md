@@ -7,7 +7,7 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 [![wheel size](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fpypi.org%2Fpypi%2Ftha-map-runner%2Fjson&label=wheel%20size&query=%24.urls%5B0%5D.size&suffix=%20B)](https://pypi.org/project/tha-map-runner/#files)
 
-A small Python library that joins a list of row dicts with a lookup source, projecting values into flat row columns via a mapping config.
+A Tabular Helper API library that maps and joins dict-like data into row dicts using dotted-path projection. Joins a list of row dicts with a lookup source, projecting values into flat row columns via a mapping config.
 
 Supports single-key and composite-key joins, left/inner/anti modes, and dotted-path projection into arbitrarily nested source data.
 

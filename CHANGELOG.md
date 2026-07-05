@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.11] - 2026-07-04
+### Fixed
+- Added missing `keywords` to `pyproject.toml` (PyPI search had none) and fixed the README's opening line to lead with the family-standard "A Tabular Helper API library that..." description instead of a divergent one-off wording.
+
 ## [0.2.10] - 2026-07-04
 ### Fixed
 - `__init__.py` `__version__` was stale at `0.2.8` while `pyproject.toml` and PyPI were already at `0.2.9` — now back in sync.
