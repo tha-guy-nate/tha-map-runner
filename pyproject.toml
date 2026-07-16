@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tha-map-runner"
-version = "0.2.12"
+version = "0.3.0"
 description = "A Tabular Helper API library that maps and joins dict-like data into row dicts using dotted-path projection."
 readme = "README.md"
 keywords = ["data-mapping", "join", "tabular", "helper"]

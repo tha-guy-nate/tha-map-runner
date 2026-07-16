@@ -1,6 +1,7 @@
 import pytest
 
-from tha_map_runner.paths import resolve_path
+from tha_map_runner import MapperError, exclude, include
+from tha_map_runner.paths import resolve_mapping_value, resolve_path
 
 
 def test_top_level_key() -> None:
@@ -65,3 +66,82 @@ def test_list_traversal_non_dict_item() -> None:
 def test_list_traversal_nested_list_of_lists() -> None:
     obj = {"a": [[{"c": 1}, "skip"], [{"c": 2}]]}
     assert resolve_path(obj, "a.c") == [1, None, 2]
+
+
+# --- resolve_mapping_value ---
+
+
+def test_mapping_value_scalar_path() -> None:
+    assert resolve_mapping_value({"name": "Alice"}, "name") == "Alice"
+
+
+def test_mapping_value_empty_string_returns_whole_match() -> None:
+    match = {"name": "Alice", "role": "admin"}
+    assert resolve_mapping_value(match, "") == match
+
+
+def test_mapping_value_dict_builds_sub_dict() -> None:
+    match = {"name": "Alice", "role": "admin", "team": "eng"}
+    spec = {"who": "name", "job": "role"}
+    assert resolve_mapping_value(match, spec) == {"who": "Alice", "job": "admin"}
+
+
+def test_mapping_value_dict_can_nest_whole_match() -> None:
+    match = {"name": "Alice"}
+    assert resolve_mapping_value(match, {"full": ""}) == {"full": match}
+
+
+def test_mapping_value_list_is_shorthand_dict_keyed_by_path() -> None:
+    match = {"name": "Alice", "role": "admin"}
+    assert resolve_mapping_value(match, ["name", "role"]) == {"name": "Alice", "role": "admin"}
+
+
+def test_mapping_value_set_excludes_keys() -> None:
+    match = {"name": "Alice", "role": "admin", "ssn": "123-45-6789"}
+    assert resolve_mapping_value(match, {"ssn"}) == {"name": "Alice", "role": "admin"}
+
+
+def test_mapping_value_set_exclude_none_matching_keeps_everything() -> None:
+    match = {"name": "Alice", "role": "admin"}
+    assert resolve_mapping_value(match, {"nonexistent"}) == match
+
+
+def test_mapping_value_missing_path_gives_empty_string() -> None:
+    assert resolve_mapping_value({"name": "Alice"}, "no.such.path") == ""
+
+
+def test_mapping_value_invalid_type_raises() -> None:
+    with pytest.raises(MapperError, match="invalid mapping value"):
+        resolve_mapping_value({"name": "Alice"}, 5)  # type: ignore[arg-type]
+
+
+# --- include / exclude helpers ---
+
+
+def test_include_returns_list() -> None:
+    assert include("age", "gender.code") == ["age", "gender.code"]
+
+
+def test_include_empty() -> None:
+    assert include() == []
+
+
+def test_exclude_returns_set() -> None:
+    assert exclude("ssn", "internal_id") == {"ssn", "internal_id"}
+
+
+def test_exclude_empty() -> None:
+    assert exclude() == set()
+
+
+def test_include_used_as_mapping_value() -> None:
+    match = {"age": 42, "gender": {"code": "F"}}
+    assert resolve_mapping_value(match, include("age", "gender.code")) == {
+        "age": 42,
+        "gender.code": "F",
+    }
+
+
+def test_exclude_used_as_mapping_value() -> None:
+    match = {"name": "Alice", "ssn": "123-45-6789"}
+    assert resolve_mapping_value(match, exclude("ssn")) == {"name": "Alice"}
