@@ -4,7 +4,7 @@ import warnings
 from typing import Any
 
 from .errors import MapperError
-from .paths import resolve_path
+from .paths import MappingValue, resolve_mapping_value, resolve_path
 
 _HOW = {"left", "inner", "anti"}
 _ON_NO_MATCH = {"skip", "error", "blank"}
@@ -18,7 +18,7 @@ class ThaMap:
         self,
         rows: list[dict[str, Any]],
         source: list[dict[str, Any]],
-        mapping: dict[str, str],
+        mapping: dict[str, MappingValue],
         row_key: str = "",
         source_key: str = "",
         *,
@@ -111,9 +111,8 @@ class ThaMap:
                 continue
 
             new_row = row.copy()
-            for field, path in mapping.items():
-                value = resolve_path(match, path)
-                new_row[field] = "" if value is None else value
+            for field, spec in mapping.items():
+                new_row[field] = resolve_mapping_value(match, spec)
             output.append(new_row)
 
         self.rows = output
@@ -123,7 +122,7 @@ class ThaMap:
         self,
         rows: list[dict[str, Any]],
         source: list[dict[str, Any]],
-        mapping: dict[str, str],
+        mapping: dict[str, MappingValue],
         *,
         row_key: str,
         source_key: str,
@@ -193,9 +192,8 @@ class ThaMap:
 
             for match in matches:
                 new_row = row.copy()
-                for field, path in mapping.items():
-                    value = resolve_path(match, path)
-                    new_row[field] = "" if value is None else value
+                for field, spec in mapping.items():
+                    new_row[field] = resolve_mapping_value(match, spec)
                 output.append(new_row)
 
         self.rows = output
@@ -206,7 +204,7 @@ class ThaMap:
         rows: list[dict[str, Any]],
         ddb_result: dict[str, dict[str, dict[str, Any]]],
         row_key: str,
-        mapping: dict[str, str],
+        mapping: dict[str, MappingValue],
         *,
         table_name: str = "",
         table_name_col: str = "",
@@ -272,9 +270,8 @@ class ThaMap:
                 continue
 
             new_row = row.copy()
-            for field, path in mapping.items():
-                value = resolve_path(match["data"], path)
-                new_row[field] = "" if value is None else value
+            for field, spec in mapping.items():
+                new_row[field] = resolve_mapping_value(match["data"], spec)
             output.append(new_row)
 
         self.rows = output

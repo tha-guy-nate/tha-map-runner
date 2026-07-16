@@ -98,7 +98,7 @@ ThaMap()
 mapper.enrich_rows(
     rows,                              # list of row dicts
     source,                            # list of dicts to join against (any nesting depth)
-    mapping,                           # {"output_column": "dotted.path"}
+    mapping,                           # {"output_column": mapping value — see "Mapping values" below}
     row_key="",                        # column name in rows to match on (single-key mode)
     source_key="",                     # dotted path in source to match on (single-key mode)
     *,
@@ -130,6 +130,45 @@ mapper.enrich_rows(
 
 Results are also stored in `mapper.rows`.
 
+### Mapping values
+
+Each `mapping` value determines what's projected into that output column. Applies to `enrich_rows`, `expand_rows`, and `enrich_from_ddb` alike:
+
+| Value type | Behaviour |
+|---|---|
+| `str` (dotted path) | Scalar projection — the existing behaviour, e.g. `"parent.sourcedId"` |
+| `""` (empty string) | The whole matched record, unprojected |
+| `dict` | A nested sub-mapping, recursively resolved into a sub-dict |
+| `list[str]` (or `include(...)`) | Shorthand for a `dict` keyed by each path itself |
+| `set[str]` (or `exclude(...)`) | The whole matched record minus these top-level keys |
+
+`include()` and `exclude()` are thin exported helpers — `include("age", "gender.code")` just returns `["age", "gender.code"]` and `exclude("ssn")` just returns `{"ssn"}`. They're optional sugar for readability; the bare list/set literals work identically.
+
+```python
+from tha_map_runner import ThaMap, include, exclude
+
+mapper = ThaMap()
+mapper.enrich_rows(
+    rows,
+    api_response,
+    mapping={
+        "Org Name": "name",                                       # scalar
+        "raw": "",                                                 # whole matched record
+        "demographics": {"age": "age", "gender": "gender.code"},   # subset, custom keys
+        "include": include("age", "gender.code"),                  # subset, keyed by path
+        "exclude": exclude("ssn", "internal_id"),                  # whole record minus these keys
+    },
+    row_key="Org BK",
+    source_key="sourcedId",
+)
+# -> {"Org Name": ..., "raw": {...}, "demographics": {"age": ..., "gender": ...},
+#     "include": {"age": ..., "gender.code": ...}, "exclude": {...}}
+```
+
+**Planned**: `exclude()`/`set[str]` only drops top-level keys today. Excluding a *nested* path (e.g. dropping `"address.ssn"` while keeping the rest of `address`) isn't supported yet — not needed so far, but a candidate future extension if a real use case shows up.
+
+A missing path anywhere in the mapping (top-level or nested) resolves to `""`, same as today's scalar behaviour.
+
 ### `mapper.enrich_from_ddb()`
 
 Enriches rows from a `fetch_by_pk` result (the `{table_name: {pk: record}}` shape returned by `tha-aws-runner`'s `ThaDdb.fetch_by_pk`). No `tha-aws-runner` import required — just pass the dict.
@@ -139,7 +178,7 @@ mapper.enrich_from_ddb(
     rows,                              # list of row dicts
     ddb_result,                        # {table_name: {pk: record}} from ThaDdb.fetch_by_pk
     row_key,                           # column name in rows to match on (matched against pk)
-    mapping,                           # {"output_column": "dotted.path"}
+    mapping,                           # {"output_column": mapping value — see "Mapping values" below}
     *,
     table_name="",                     # scope lookup to one table (all rows same table)
     table_name_col="",                 # row column holding the table name (mixed-table rows)
@@ -242,7 +281,7 @@ Like `enrich_rows` but one-to-many: produces N output rows for a row with N matc
 mapper.expand_rows(
     rows,                              # list of row dicts
     source,                            # list of dicts to fan out against
-    mapping,                           # {"output_column": "dotted.path"}
+    mapping,                           # {"output_column": mapping value — see "Mapping values" below}
     *,
     row_key,                           # column name in rows to match on
     source_key,                        # dotted path in source to match on

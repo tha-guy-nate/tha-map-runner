@@ -354,6 +354,75 @@ def test_row_missing_row_key_treated_as_no_match(
     assert result[0]["Org Name"] == ""
 
 
+# --- enrich_rows: nested mapping values (whole record / subset dict / list shorthand) ---
+
+
+def test_empty_string_path_returns_whole_match(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict]
+) -> None:
+    result = mapper.enrich_rows(rows, json_items, {"raw": ""}, "Org BK", "sourcedId")
+    assert result[0]["raw"] == json_items[0]
+
+
+def test_dict_value_builds_sub_dict(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict]
+) -> None:
+    mapping = {"demographics": {"name": "name", "parent": "parent.sourcedId"}}
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId")
+    assert result[0]["demographics"] == {"name": "Lincoln Elementary", "parent": "dist-A"}
+
+
+def test_dict_value_can_nest_the_whole_record(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict]
+) -> None:
+    mapping = {"demographics": {"full": ""}}
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId")
+    assert result[0]["demographics"] == {"full": json_items[0]}
+
+
+def test_list_value_is_shorthand_for_dict_keyed_by_path(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict]
+) -> None:
+    mapping = {"demographics": ["name", "parent.sourcedId"]}
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId")
+    assert result[0]["demographics"] == {"name": "Lincoln Elementary", "parent.sourcedId": "dist-A"}
+
+
+def test_nested_dict_missing_path_gives_empty_string(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict]
+) -> None:
+    mapping = {"demographics": {"missing": "no.such.path"}}
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId")
+    assert result[0]["demographics"] == {"missing": ""}
+
+
+def test_no_match_blank_still_blanks_nested_mapping_field(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict]
+) -> None:
+    mapping = {"demographics": {"name": "name"}}
+    result = mapper.enrich_rows(
+        rows, json_items, mapping, "Org BK", "sourcedId", on_no_match="blank"
+    )
+    no_match = result[2]  # school-003 not in source
+    assert no_match["demographics"] == ""
+
+
+def test_set_value_returns_whole_match_minus_excluded_keys(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict]
+) -> None:
+    mapping = {"demographics": {"parent"}}
+    result = mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId")
+    assert result[0]["demographics"] == {"sourcedId": "school-001", "name": "Lincoln Elementary"}
+
+
+def test_invalid_mapping_value_type_raises(
+    rows: list[dict], mapper: ThaMap, json_items: list[dict]
+) -> None:
+    mapping = {"bad": 5}  # type: ignore[dict-item]
+    with pytest.raises(MapperError, match="invalid mapping value"):
+        mapper.enrich_rows(rows, json_items, mapping, "Org BK", "sourcedId")
+
+
 # --- enrich_rows: composite keys (keys=) ---
 
 
@@ -766,6 +835,20 @@ def test_enrich_from_ddb_table_name_col_not_found_no_match(mapper, ddb_result, d
     rows = [{"user_id": "user-003", "tbl": "users_table"}]
     result = mapper.enrich_from_ddb(rows, ddb_result, "user_id", ddb_mapping, table_name_col="tbl")
     assert "Name" not in result[0]
+
+
+def test_enrich_from_ddb_whole_record_and_subset_mapping(mapper, ddb_result, ddb_rows) -> None:
+    mapping = {
+        "raw": "",
+        "summary": {"who": "name"},
+        "flat": ["name", "role"],
+    }
+    result = mapper.enrich_from_ddb(
+        ddb_rows, ddb_result, "user_id", mapping, table_name="users_table"
+    )
+    assert result[0]["raw"] == {"name": "Alice", "role": "admin"}
+    assert result[0]["summary"] == {"who": "Alice"}
+    assert result[0]["flat"] == {"name": "Alice", "role": "admin"}
 
 
 def test_enrich_from_ddb_table_name_col_error_treated_as_no_match(mapper, ddb_mapping):

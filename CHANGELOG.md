@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-15
+
+### Added
+
+Mapping values in `enrich_rows`, `expand_rows`, and `enrich_from_ddb` now support one-to-many field enrichment, in addition to the existing one-to-one dotted-path string:
+
+- `""` (empty string) resolves to the whole matched record.
+- A `dict` value is a nested sub-mapping, recursively resolved into a sub-dict.
+- A `list` of dotted paths is shorthand for a dict keyed by each path, e.g. `["age", "gender.code"]` → `{"age": ..., "gender.code": ...}`.
+- A `set` of top-level keys resolves to the whole matched record minus those keys, e.g. `{"ssn", "internal_id"}` for a public-facing subset.
+- New exported `include(*paths)` / `exclude(*keys)` helpers — thin, optional sugar that build the `list`/`set` mapping-value shapes above (`include("age", "gender.code")` == `["age", "gender.code"]`, `exclude("ssn")` == `{"ssn"}`).
+
 ## [0.2.12] - 2026-07-05
 ### Fixed
 - `__init__.py` `__version__` was stale at `0.2.10` while `pyproject.toml` and PyPI were already at `0.2.11` — now back in sync.
