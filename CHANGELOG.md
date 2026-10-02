@@ -8,7 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- Dev dependencies are now pinned to exact versions (`==`) instead of `>=` floors, and updated to the latest releases: `pytest==9.1.1`, `ruff==0.16.10`, `mypy==2.4.0`, `deptry==0.25.1`, `pip-audit==2.10.1`, `pytest-cov==7.1.0`.
 - `__version__` is now read from the installed package metadata (`importlib.metadata`) instead of a hardcoded string, so `pyproject.toml` is the only place the version is bumped.
 
 ## [0.3.1] - 2026-08-21
